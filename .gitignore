@@ -1,0 +1,6 @@
+Issue*.tex
+Issue*.pdf
+*.aux
+*.log
+*.toc
+*.out
