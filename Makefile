@@ -1,4 +1,4 @@
-issue = Issue
+issue = Issue23
 
 #lhssources = 
 texsources = Editorial.tex
