@@ -11,18 +11,17 @@
 \usepackage{ifthen}
 \usepackage[all]{xy}
 
-\issue{Issue 24}
+\issue{Mini Issue 24: Predicates, Trees and GADTs}
 
-%\author{First Last\email{foo@example.com}}
+\author{Benjamin Hodgson\email{benhodgson91@@gmail.com}}
 
 \publishers{Edward Z. Yang, editor.}
 
 \date{\today}
 
 \begin{document}
-\tableofcontents
+%\tableofcontents
 
-\article{Editorial}
-%\article{articlename}
+\article{predicates/Predicates}
 
 \end{document}

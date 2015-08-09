@@ -1,4 +1,4 @@
-issue = Issue23
+issue = Issue24
 
 #lhssources = 
 texsources = Editorial.tex
@@ -10,6 +10,12 @@ $(issue).tex : $(issue).lhs $(texsources) $(lhssources)
 
 %.pdf: %.tex force
 	pdflatex $<
+
+predicates/Predicates.raw.tex: predicates/Predicates.lhs
+	lhs2TeX $< -o $@
+
+predicates/Predicates.tex: predicates/Predicates.raw.tex
+	runhaskell predicates/FixupDataKinds.hs predicates/Predicates.raw.tex $@
 
 %.tex: %.lhs
 	lhs2TeX $< -o $@

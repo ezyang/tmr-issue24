@@ -1,6 +1,7 @@
 \ProvidesClass{tmr}
 \LoadClass[12pt,twoside,DIV10]{scrreprt}
 
+\RequirePackage{latexsym}
 \RequirePackage{scrpage2}
 \RequirePackage{relsize}
 \RequirePackage[colorlinks=true,

@@ -4,3 +4,5 @@ Issue*.pdf
 *.log
 *.toc
 *.out
+predicates/Predicates.tex
+predicates/Predicates.raw.tex
