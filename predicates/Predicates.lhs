@@ -12,10 +12,12 @@
 \begin{document}
 \begin{introduction}
 Haskell's crazy type system marches boldly past polymorphism and into the
-DMZ between us and dependent types. But GHC's advanced features are not just
-a hobby-horse for researchers. I'm going to show you how constraints,
-higher-rank types, GADTs and more can help with engineering, addressing
-the shortcomings of a simple data type harvested from real-world code.
+DMZ \EZY{Odd use of an acronym. Maybe expand it, or replace with ``no-man's land''?} between us and dependent types. But GHC's advanced features are not just
+a hobby-horse for researchers.  In this article, we describe an application
+of constraints, higher-ranked types and GADTs to a problem which we
+encountered in a real world setting, namely the definition of a \emph{predicate
+language} for security checks. \EZY{Rewrote the second paragraph to be more
+clear about what the article was about. Feel free to tweak more.}
 \end{introduction}
 
 %if False
@@ -40,7 +42,7 @@ module Pred where
 
 \section{Introducing Predicates}
 
-Where I work, we've built a datatype of composable Boolean predicates
+Where I work\EZY{Can you say where you work?}, we've built a datatype of composable Boolean predicates
 to help us implement security checks. It works by combining small functions
 |a -> Bool| into a tree which admits many interpretations:
 you can evaluate trees back into a function, pretty-print them,
@@ -60,16 +62,17 @@ A |Pred a| denotes a predicate on some type |a|; soon we will write a
 function |eval| with a type of |Pred a -> (a -> Bool)| which pulls out
 the function which a |Pred| is meant to represent.
 At the leaves of the tree are small functions which test a single
-fact about |a|, along with a name for the leaf so we can identify it later.
+fact about |a|, along with a name for the leaf so we can identify it later.\EZY{You don't actually identify leaves this way, right? It's like, for the pretty-printer.}
 The power of this design comes from the ability to combine smaller predicates
 into bigger ones: |And| denotes the conjunction of two predicates,
 |Or| denotes a disjunction, and |Not| denotes the negation of a predicate.
 (There is some overlap between these denotations; |Or p q| is equivalent
 to |Not (And (Not p) (Not q))|. I chose to keep the redundant constructors
-to make the code easier to read.)
+to make the code easier to read.)\EZY{This is poorly explained, because if represent predicates as just a function from a to bool, those are composable too!  The real point is that because you have an AST for predicates, so you can do analysis on it intensionally, whereas functions only admit extensional manipulation.}
 
 Here's how you might use |Pred| for permissions checks in a simple blogging system.
 First, the players on our stage:
+\EZY{Why not avoid introducing comments for now, and add them later when you demonstrate that going over other data types?}
 
 \begin{code}
 data User = U {
@@ -89,7 +92,7 @@ data Comment = C {
 
 We intend to write permissions checks involving users and posts,
 but |Pred| has only one type parameter. So we simply wrap up
-our two entities into a new type.
+our two entities into a new type. \EZY{This is a pretty strange thing to do. Shouldn't you have predicates on users, and predicates on post?  Perhaps what you actually mean is that a world is a context, and so these contexts are if someone is trying to post a post: the user is the current user and the post that is being posted.  Then organizing it this way makes more sense.}
 
 \begin{spec}
 data World = W {
@@ -146,7 +149,7 @@ fold leaf and or not (Not p) = not (fold leaf and or not p)
 \end{code}
 %format not = "\neg "
 
-Look how beautiful |eval| is when we implement it in terms of |fold|!
+Look how beautiful |eval| is when we implement it in terms of |fold|! \EZY{But it's not very type safe; a record would be better ;)}
 
 \begin{code}
 eval :: Pred a -> a -> Bool
