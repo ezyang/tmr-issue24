@@ -204,6 +204,7 @@ The problem gets worse as we add more entities
 to our system: the bigger the |World| becomes, the harder it
 is to use. |World| does a poor job of solving the
 problem of composing predicates of different types.
+\EZY{Let me elaborate on this some more: the problem with the World type is it doesn't have any semantic meaning: it is a convenient place for putting ``data you might be interested in querying for policy information''.  The point of putting it in the world type is so that you can conveniently pass it to predicate functions.  So, this is something that people like to do in dynamically typed language, but it smacks of the ``wrong approach'' in Haskell. Of course, this article is all about how to use GADTs to make things better, but it seems to me that things might be clearer if the starting point were ``more right''.}
 
 There's an implicit coupling between the particular predicate we use,
 and the contents of the |World| you use it with.
@@ -230,8 +231,7 @@ class HasComment a where
 The type class methods |user|, |post| and |comment| can be used as drop-in
 replacements for the extractors that were previously defined as fields
 in |World|. Our original predicates compile without modification
-(although I did have to turn off the monomorphism restriction to allow
-type inference), with more general types:
+with more general types:
 
 \begin{verbatim}
 ghci> :t userIsRegistered
@@ -240,7 +240,7 @@ ghci> :t userCanComment
   userCanComment :: (HasUser a, HasPost a) => Pred a
 \end{verbatim}
 
-|userCanComment| was a composed predicate. GHC has pushed the
+|userCanComment| was a composed predicate. Consequently, GHC has pushed the
 |HasUser| and |HasPost| requirements up the tree for us:
 you have to satisfy all the leaf nodes' constraints
 in order to use a predicate tree.
@@ -283,11 +283,11 @@ the whole tree becomes a |Pred MyCoolType|,
 with all the same problems as the original version.
 The situation we wanted to avoid hasn't been ruled out,
 merely swept under the carpet; one uncooperative party can spoil the
-fun for everyone. Can |Pred| be re-engineered so that it
+fun for everyone. \EZY{I feel like this section isn't very clear. The point is that you must keep predicates universally quantified, otherwise they don't compose anymore.} Can |Pred| be re-engineered so that it
 may never be used with a specific type?
 
 The plan is to parameterise |Pred| not by any exact type but by the
-constraint the predicate places on the type it tests.
+constraint the predicate places on the type it tests. \EZY{This is the key sentence! I had to read this twice and look at the code to figure out what was going on here; and I'm already familiar with constraint kinds.  Perhaps some more build up here is in order?}
 When you compose two predicates using |And| or |Or|,
 the two branches' constraints join together into a single,
 stronger constraint.
@@ -309,13 +309,17 @@ has a rank-two type: the |forall a| means that the function
 in parentheses must be polymorphic in |a|. The author of a leaf
 node is not free to choose a type |a| for the predicate --
 all you can say is that it satisfies a certain constraint |c|.
+\EZY{I think you can be more precise here: if you think about
+this from the perspective of the predicate, it is that we have
+HIDDEN the actual type of a from it; we just know that there
+are some type class constraints available.}
 |And'| and |Or'| have special types too: they join the constraints
 of their subtrees together. (|/\| denotes the conjunction of two
-constraints.) The |Pred'| that you get back from a call to |And'|
+constraints \EZY{where from}.) The |Pred'| that you get back from a call to |And'|
 or |Or'| has a stronger constraint than its two inputs because you
 have to be able to satisfy the constraints of both subtrees.
-We are effectively manually propagating constraints from the leaves
-to the root of the tree, which GHC was doing for us implicitly before.
+In other words, We are manually propagating constraints from the leaves
+to the root of the tree, which GHC previously did implicitly.
 
 I had to turn on some language extensions to write this data type.
 The @RankNTypes@ extension enables \emph{higher-rank types},
@@ -335,7 +339,7 @@ instance (c1 a, c2 a) => (/\) c1 c2 a
 \end{code}
 
 I'm going to unify the |Has...| classes from earlier
-into a single generic class.
+into a single generic class. \EZY{but now you can't double up}
 
 \begin{code}
 -- |HasUser| is equivalent to |Get User| and so on
@@ -411,7 +415,10 @@ they want to plug in.
 It turns out that type classes let us design a simpler API which
 satisfies the same requirements. Essentially, the higher-rank
 function parameters are translated into (overloaded)
-top-level functions.
+top-level functions. \EZY{I wonder; why don't you get the same
+simplicity with an algebra data type? (So instead of writing instances,
+you just write a record that implements the functions you want. Types
+get inferred from the polymorphic record fields.)}
 
 %if False
 it's duplicated in a spec block up there
@@ -490,7 +497,7 @@ It works by duplicating all |data| declarations at the type level --
 called |Bool| and two types called |True| and |False|.
 While it may be pleasing to think that values can appear in types,
 it's really just a sleight of hand -- they're regular types which
-look a bit like values.
+look a bit like values. \EZY{I'd axe this sentence, or make it more precise.}
 
 Type-level data gets useful when you use a GADT to glue values
 and types together. We're going to parameterise our tuple type
@@ -573,7 +580,7 @@ for a given tuple. The idea is to delegate to a second class |GetT|, which
 has an extra parameter for the result of |Where|. GHC can use the value of
 this extra parameter (which will be either |Here| or |There|) to
 distinguish the two instances of |GetT|. It's a bit of a hack,
-but at least it's a well-understood and safe hack.
+but at least it's a well-understood and safe hack. \EZY{I think you need to remark a little bit about the proxy code}
 
 \begin{code}
 data Proxy a = Proxy
