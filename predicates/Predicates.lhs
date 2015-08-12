@@ -12,12 +12,11 @@
 \begin{document}
 \begin{introduction}
 Haskell's crazy type system marches boldly past polymorphism and into the
-DMZ \EZY{Odd use of an acronym. Maybe expand it, or replace with ``no-man's land''?} between us and dependent types. But GHC's advanced features are not just
+no-man's land between us and dependent types. But GHC's advanced features are not just
 a hobby-horse for researchers.  In this article, we describe an application
-of constraints, higher-ranked types and GADTs to a problem which we
-encountered in a real world setting, namely the definition of a \emph{predicate
-language} for security checks. \EZY{Rewrote the second paragraph to be more
-clear about what the article was about. Feel free to tweak more.}
+of constraints, higher-ranked types, GADTs, and type-level data to
+a problem which we encountered in a real-world setting,
+namely the definition of a \emph{predicate language} for security checks.
 \end{introduction}
 
 %if False
@@ -42,13 +41,13 @@ module Pred where
 
 \section{Introducing Predicates}
 
-Where I work\EZY{Can you say where you work?}, we've built a datatype of composable Boolean predicates
-to help us implement security checks. It works by combining small functions
-|a -> Bool| into a tree which admits many interpretations:
-you can evaluate trees back into a function, pretty-print them,
-compare them for equality, and so on. My colleagues and I are
-stuck using C$\sharp$, but the idea translates into Haskell
-concisely and beautifully:
+Where I work~\cite{huddle}, we've built a datatype of composable
+Boolean predicates to help us implement security checks.
+It works by combining small functions |a -> Bool| into a tree
+which admits many interpretations: you can evaluate trees
+back into a function, pretty-print them, compare them for equality,
+and so on. My colleagues and I are stuck using C$\sharp$, but the
+idea translates into Haskell concisely and beautifully:
 
 \begin{code}
 type Name = String
@@ -62,17 +61,25 @@ A |Pred a| denotes a predicate on some type |a|; soon we will write a
 function |eval| with a type of |Pred a -> (a -> Bool)| which pulls out
 the function which a |Pred| is meant to represent.
 At the leaves of the tree are small functions which test a single
-fact about |a|, along with a name for the leaf so we can identify it later.\EZY{You don't actually identify leaves this way, right? It's like, for the pretty-printer.}
-The power of this design comes from the ability to combine smaller predicates
-into bigger ones: |And| denotes the conjunction of two predicates,
-|Or| denotes a disjunction, and |Not| denotes the negation of a predicate.
-(There is some overlap between these denotations; |Or p q| is equivalent
-to |Not (And (Not p) (Not q))|. I chose to keep the redundant constructors
-to make the code easier to read.)\EZY{This is poorly explained, because if represent predicates as just a function from a to bool, those are composable too!  The real point is that because you have an AST for predicates, so you can do analysis on it intensionally, whereas functions only admit extensional manipulation.}
+fact about |a|, along with a name for the leaf.
+The other constructors provide ways to compose predicates together:
+|And| denotes the conjunction of two predicates, |Or| denotes a
+disjunction, and |Not| denotes the negation of a predicate.
+(There is some overlap between these denotations;
+|Or p q| is equivalent to |Not (And (Not p) (Not q))|.
+I chose to keep the redundant constructors to make the code clearer.)
+
+Why go to the effort of developing a whole data type for predicates?
+We could represent predicates as functions |a -> Bool| and provide
+combinators which compose them. But a function is a black box;
+all you can do with a function is apply it to something.
+Reifying the |And|, |Or| and |Not| combinations as a data type
+allows you to manipulate and analyse the structure of a predicate --
+for example, you can compare two |Pred|s for equality -- whereas
+functions admit no such manipulation.
 
 Here's how you might use |Pred| for permissions checks in a simple blogging system.
 First, the players on our stage:
-\EZY{Why not avoid introducing comments for now, and add them later when you demonstrate that going over other data types?}
 
 \begin{code}
 data User = U {
@@ -84,15 +91,14 @@ data Post = P {
     canCommentAnonymously :: Bool,
     author :: User
 }
-data Comment = C {
-    commentAuthor :: User,
-    commentText :: String
-}
 \end{code}
 
-We intend to write permissions checks involving users and posts,
-but |Pred| has only one type parameter. So we simply wrap up
-our two entities into a new type. \EZY{This is a pretty strange thing to do. Shouldn't you have predicates on users, and predicates on post?  Perhaps what you actually mean is that a world is a context, and so these contexts are if someone is trying to post a post: the user is the current user and the post that is being posted.  Then organizing it this way makes more sense.}
+How might we write a |Pred| to check whether a user is
+allowed to edit a given post? We'll need to query information
+about both the user and the post, but |Pred| has only one type
+parameter. So we simply wrap up our two entities into a new type
+representing the context of an action within the blogging system:
+the user performing the action and the post they are acting upon.
 
 \begin{spec}
 data World = W {
@@ -178,13 +184,19 @@ predId = fold Leaf And Or Not
 \section{Composability}
 
 Go back and look at the blogging example again. That |World| type is a
-bit of a pain. It arose because we wanted to write predicates
-which operate on more than one entity, but you can't directly compose a
+bit of a pain. It arose because we wanted to write predicates which
+operate on more than one entity, but you can't directly compose a
 |Pred Post| with a |Pred User|.
+|World| doesn't really have a semantic meaning; it's simply a place to
+put ``data you might want to query for a permission check''.
 The problem is, if we wanted to check permissions on a new entity,
 we'd have to change |World| and break backwards compatibility.
 
 \begin{code}
+data Comment = C {
+    commentAuthor :: User,
+    commentText :: String
+}
 userCanDeleteComment = Leaf "userCanDeleteComment" (\x ->
     commentAuthor (comment x) == user x)
 \end{code}
@@ -196,22 +208,22 @@ data World = W {
 }
 \end{spec}
 
-There'll now be places where the |W| constructor
-is being used but a |Comment| is not available,
-forcing people who want to use our predicates to
-set that field to |undefined| and risk crashing their program!
-The problem gets worse as we add more entities
-to our system: the bigger the |World| becomes, the harder it
-is to use. |World| does a poor job of solving the
-problem of composing predicates of different types.
-\EZY{Let me elaborate on this some more: the problem with the World type is it doesn't have any semantic meaning: it is a convenient place for putting ``data you might be interested in querying for policy information''.  The point of putting it in the world type is so that you can conveniently pass it to predicate functions.  So, this is something that people like to do in dynamically typed language, but it smacks of the ``wrong approach'' in Haskell. Of course, this article is all about how to use GADTs to make things better, but it seems to me that things might be clearer if the starting point were ``more right''.}
+There'll now be places where the |W| constructor is being used but a
+|Comment| is not available, forcing people who want to use our
+predicates to set that field to |undefined| and risk crashing their
+program! This might make sense in a dynamically typed language,
+but it seems like the wrong approach in Haskell.
+The problem gets worse as we add more entities to our system: the
+bigger the |World| becomes, the harder it is to use.
+|World| does a poor job of solving the problem of composing predicates
+of different types.
 
-There's an implicit coupling between the particular predicate we use,
-and the contents of the |World| you use it with.
-The predicates are too restrictive about the
-type of data that they test. |userIsActive| only needs a
-|User|, but its type (|Pred World|) insists
-on dragging a whole |World| along with it.
+The root cause of the pain is that predicates are too restrictive
+about the type of data that they test. |userIsActive| only needs a
+|User|, but its type (|Pred World|) insists on dragging a whole
+|World| along with it. This results in an implicit coupling between
+the particular predicate we use and the contents of the |World|
+you use it with.
 
 Type classes allow us to make that implicit coupling
 explicit in the type. I'm going to rewrite our atomic predicates
@@ -277,20 +289,18 @@ test2 = eval userCanComment (UP u p)  -- |False|
 
 What's problematic about this type class-based solution?
 It requires everyone to agree on the idea of using type classes
-instead of concrete types. If I hastily write a |Pred MyCoolType| and
-compose it with some of your carefully designed predicates,
-the whole tree becomes a |Pred MyCoolType|,
-with all the same problems as the original version.
-The situation we wanted to avoid hasn't been ruled out,
+instead of concrete types. Predicates have to be universally quantified,
+otherwise they don't compose any more. If I hastily write a |Pred MyCoolType|
+and compose it with some of your carefully designed predicates, the whole
+tree becomes a |Pred MyCoolType|, with all the same problems as the
+original version. The situation we wanted to avoid hasn't been ruled out,
 merely swept under the carpet; one uncooperative party can spoil the
-fun for everyone. \EZY{I feel like this section isn't very clear. The point is that you must keep predicates universally quantified, otherwise they don't compose anymore.} Can |Pred| be re-engineered so that it
-may never be used with a specific type?
+fun for everyone. Can |Pred| be re-engineered so that it may never be used
+with a specific type?
 
 The plan is to parameterise |Pred| not by any exact type but by the
-constraint the predicate places on the type it tests. \EZY{This is the key sentence! I had to read this twice and look at the code to figure out what was going on here; and I'm already familiar with constraint kinds.  Perhaps some more build up here is in order?}
-When you compose two predicates using |And| or |Or|,
-the two branches' constraints join together into a single,
-stronger constraint.
+type class constraint the predicate places on the type that it tests.
+\EZY{This is the key sentence! I had to read this twice and look at the code to figure out what was going on here; and I'm already familiar with constraint kinds.  Perhaps some more build up here is in order?}
 
 %format /\ = "\wedge"
 %format forall = "\forall"
@@ -306,17 +316,17 @@ data Pred' c where  -- |Pred' :: (* -> Constraint) -> *|
 
 Look carefully at the types of these constructors. |Leaf'|
 has a rank-two type: the |forall a| means that the function
-in parentheses must be polymorphic in |a|. The author of a leaf
-node is not free to choose a type |a| for the predicate --
-all you can say is that it satisfies a certain constraint |c|.
-\EZY{I think you can be more precise here: if you think about
-this from the perspective of the predicate, it is that we have
-HIDDEN the actual type of a from it; we just know that there
-are some type class constraints available.}
+in parentheses must be polymorphic in |a|.
+The author of a predicate is not free to choose a type |a|
+because we have hidden it from the |Pred| type -- all you
+can say is that |a|, when it is eventually determined at the
+use site of the predicate, must satisfy a certain constraint |c|.
+
 |And'| and |Or'| have special types too: they join the constraints
-of their subtrees together. (|/\| denotes the conjunction of two
-constraints \EZY{where from}.) The |Pred'| that you get back from a call to |And'|
-or |Or'| has a stronger constraint than its two inputs because you
+of their subtrees together into a single, stronger constraint.
+(|/\|, which we will define below, denotes the conjunction of two
+constraints.) The |Pred'| that you get back from an |And'| or |Or'|
+constructor has a stronger constraint than its two inputs because you
 have to be able to satisfy the constraints of both subtrees.
 In other words, We are manually propagating constraints from the leaves
 to the root of the tree, which GHC previously did implicitly.
@@ -495,9 +505,6 @@ types can feature numbers, booleans, lists of other types, and so on.
 It works by duplicating all |data| declarations at the type level --
 |data Bool = True || False| now also introduces a kind
 called |Bool| and two types called |True| and |False|.
-While it may be pleasing to think that values can appear in types,
-it's really just a sleight of hand -- they're regular types which
-look a bit like values. \EZY{I'd axe this sentence, or make it more precise.}
 
 Type-level data gets useful when you use a GADT to glue values
 and types together. We're going to parameterise our tuple type
@@ -723,6 +730,7 @@ the introduction to the Agda programming language~\cite{norell08},
 or the Idris tutorial~\cite{idris14}.
 
 \begin{thebibliography}{9}
+\bibitem{huddle} \emph{Huddle}, http://www.huddle.com/
 \bibitem{specsBlogPost} Hodgson, \emph{All About Security}, http://tldr.huddle.com/blog/All-about-security/
 \bibitem{williams13} Williams, \emph{Fixing GADTs}, http://www.timphilipwilliams.com/posts/2013-01-16-fixing-gadts.html
 \bibitem{kiselyov04} Kiselyov, L{\"a}mmel and Schupke, \emph{Strongly Typed Heterogeneous Collections}, http://okmij.org/ftp/Haskell/HList-ext.pdf
