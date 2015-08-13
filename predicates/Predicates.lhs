@@ -155,7 +155,7 @@ fold leaf and or not (Not p) = not (fold leaf and or not p)
 \end{code}
 %format not = "\neg "
 
-Look how beautiful |eval| is when we implement it in terms of |fold|! \EZY{But it's not very type safe; a record would be better ;)}
+Look how beautiful |eval| is when we implement it in terms of |fold|!
 
 \begin{code}
 eval :: Pred a -> a -> Bool
@@ -298,9 +298,12 @@ merely swept under the carpet; one uncooperative party can spoil the
 fun for everyone. Can |Pred| be re-engineered so that it may never be used
 with a specific type?
 
+We want to keep the compositional properties of the type class-based
+design, while ``baking in'' the requirement of universally quantifying |a|.
 The plan is to parameterise |Pred| not by any exact type but by the
 type class constraint the predicate places on the type that it tests.
-\EZY{This is the key sentence! I had to read this twice and look at the code to figure out what was going on here; and I'm already familiar with constraint kinds.  Perhaps some more build up here is in order?}
+|Pred User| will no longer be valid; instead we'll be writing types
+like |Pred HasUser|.
 
 %format /\ = "\wedge"
 %format forall = "\forall"
@@ -319,8 +322,8 @@ has a rank-two type: the |forall a| means that the function
 in parentheses must be polymorphic in |a|.
 The author of a predicate is not free to choose a type |a|
 because we have hidden it from the |Pred| type -- all you
-can say is that |a|, when it is eventually determined at the
-use site of the predicate, must satisfy a certain constraint |c|.
+can say is that the concrete type with which the predicate
+is eventually used must satisfy a certain constraint |c|.
 
 |And'| and |Or'| have special types too: they join the constraints
 of their subtrees together into a single, stronger constraint.
@@ -349,7 +352,7 @@ instance (c1 a, c2 a) => (/\) c1 c2 a
 \end{code}
 
 I'm going to unify the |Has...| classes from earlier
-into a single generic class. \EZY{but now you can't double up}
+into a single generic class.
 
 \begin{code}
 -- |HasUser| is equivalent to |Get User| and so on
@@ -425,10 +428,9 @@ they want to plug in.
 It turns out that type classes let us design a simpler API which
 satisfies the same requirements. Essentially, the higher-rank
 function parameters are translated into (overloaded)
-top-level functions. \EZY{I wonder; why don't you get the same
-simplicity with an algebra data type? (So instead of writing instances,
-you just write a record that implements the functions you want. Types
-get inferred from the polymorphic record fields.)}
+top-level functions. (Alternatively, you could put the folding
+functions in a record type and pass it around explicitly, effectively
+writing by hand the code that GHC will generate from a class.)
 
 %if False
 it's duplicated in a spec block up there
@@ -519,11 +521,11 @@ data Tuple as where
 
 Tuples work rather like a (heterogeneous) linked list,
 with some extra type-level information about the things inside it.
-A tuple can be |E|mpty, in which case its associated list of types
-is also empty, or it can be a cons cell containing an element and the
-rest of the tuple. When you add something to the front of the tuple,
-you add its type to the front of the list of types, too. The tuple and
-its type grow together, like a vine creeping up a bamboo plant.
+A tuple can be empty (|E|), in which case its associated list of types
+is also empty, or it can be a cons cell (|:>|) containing an element
+and the rest of the tuple. When you add something to the front of the
+tuple, you add its type to the front of the list of types, too. The
+tuple and its type grow together, like a vine creeping up a bamboo plant.
 
 Let's query the type of a few tuples, to get a feel for how they work.
 
@@ -563,7 +565,7 @@ ghci> get ("hello" :> E) :: String
 \end{verbatim}
 
 Here, we wanted |get| to dispatch to the first instance,
-because the first element of the tuple is a |String|. However,
+because the first element of the tuple is a |String|. It failed because
 GHC only inspects the shape of your type -- not any equality
 constraints -- when resolving an instance, so it can't tell the
 two instances apart.
@@ -586,8 +588,8 @@ type family Where x xs where
 for a given tuple. The idea is to delegate to a second class |GetT|, which
 has an extra parameter for the result of |Where|. GHC can use the value of
 this extra parameter (which will be either |Here| or |There|) to
-distinguish the two instances of |GetT|. It's a bit of a hack,
-but at least it's a well-understood and safe hack. \EZY{I think you need to remark a little bit about the proxy code}
+distinguish the two instances of |GetT|.
+It's a bit of a hack, but at least it's a well-understood and safe hack.
 
 \begin{code}
 data Proxy a = Proxy
@@ -602,6 +604,9 @@ instance Get a (Tuple as) => GetT There a (Tuple (b ': as))--'
 instance (GetT (Where a as) a (Tuple as)) => Get a (Tuple as) where
     get = getT (Proxy :: Proxy (Where a as))
 \end{code}
+
+Note the use of |Proxy| -- a type whose parameter is irrelevant at runtime --
+to tell |getT| whether to dispatch to the |Here| or |There| instance.
 
 It works:
 
@@ -712,22 +717,22 @@ Would I write code like this in production? Well, maybe.
 The code is undeniably quite involved and could prove difficult to
 maintain in the long run.
 On the other hand, I feel that Haskell has been deliberately designed
-to support this high level of static safety and flexibility.
-GHC's type system has allowed us to implement our system
-without resorting to casts, code generation, or reflection.
-I counted precisely one hack in this article -- the instance
-of |Get| for |Tuple| -- and a good proportion of what we wrote was
-reusable outside of |Pred| and could go in a library.
+to support this high level of precision and flexibility. GHC's
+type system has allowed us to write a program which other languages
+would reject, and we didn't have to resort to casts, code generation,
+or reflection. I counted precisely one ugly hack in this article --
+the instance of |Get| for |Tuple| -- and a good proportion of what
+we wrote was reusable outside of |Pred| and could go in a library.
 
 For a more introductory presentation of predicates (in C$\sharp$),
 you can read my series of blog posts on the topic~\cite{specsBlogPost}.
 More on folding GADTs can be found in a blog post by
 Williams~\cite{williams13}. My presentation of |Tuple| is based on
 Kiselyov et al's paper on heterogeneous lists~\cite{kiselyov04}.
-If you're excited about programming with types like this, I can
-recommend Lindley and McBride's ``Hasochism'' paper~\cite{lind13},
-the introduction to the Agda programming language~\cite{norell08},
-or the Idris tutorial~\cite{idris14}.
+If you're excited to learn more about programming with types like this,
+I can recommend as a starting point Lindley and McBride's ``Hasochism''
+paper~\cite{lind13}, the introduction to the Agda programming
+language~\cite{norell08}, or the Idris tutorial~\cite{idris14}.
 
 \begin{thebibliography}{9}
 \bibitem{huddle} \emph{Huddle}, http://www.huddle.com/
