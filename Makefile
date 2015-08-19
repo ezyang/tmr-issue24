@@ -1,7 +1,7 @@
 issue = Issue24
 
 #lhssources = 
-texsources = Editorial.tex
+texsources = Editorial.tex predicates/Predicates.tex
 
 default: $(issue).pdf
 

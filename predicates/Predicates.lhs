@@ -606,7 +606,7 @@ instance (GetT (Where a as) a (Tuple as)) => Get a (Tuple as) where
 \end{code}
 
 Note the use of |Proxy| -- a type whose parameter is irrelevant at runtime --
-to tell |getT| whether to dispatch to the |Here| or |There| instance.
+to tell |getT| whether to dispatch to the |Here| or |There| instance.~\cite{promotion}
 
 It works:
 
@@ -735,12 +735,13 @@ paper~\cite{lind13}, the introduction to the Agda programming
 language~\cite{norell08}, or the Idris tutorial~\cite{idris14}.
 
 \begin{thebibliography}{9}
-\bibitem{huddle} \emph{Huddle}, http://www.huddle.com/
-\bibitem{specsBlogPost} Hodgson, \emph{All About Security}, http://tldr.huddle.com/blog/All-about-security/
-\bibitem{williams13} Williams, \emph{Fixing GADTs}, http://www.timphilipwilliams.com/posts/2013-01-16-fixing-gadts.html
-\bibitem{kiselyov04} Kiselyov, L{\"a}mmel and Schupke, \emph{Strongly Typed Heterogeneous Collections}, http://okmij.org/ftp/Haskell/HList-ext.pdf
-\bibitem{lind13} Lindley and McBride, \emph{Hasochism}, \newline https://personal.cis.strath.ac.uk/conor.mcbride/pub/hasochism.pdf
-\bibitem{norell08} Norell and Chapman, \emph{Dependently Typed Programming in Agda}, http://www.cse.chalmers.se/~ulfn/darcs/AFP08/LectureNotes/AgdaIntro.pdf
-\bibitem{idris14} The Idris Community, \emph{Programming in Idris: A Tutorial}, http://eb.host.cs.st-andrews.ac.uk/writings/idris-tutorial.pdf
+\bibitem{huddle} \emph{Huddle}, \url{http://www.huddle.com/}
+\bibitem{specsBlogPost} Hodgson, \emph{All About Security}, \newline \url{http://tldr.huddle.com/blog/All-about-security/}
+\bibitem{williams13} Williams, \emph{Fixing GADTs}, \newline \url{http://www.timphilipwilliams.com/posts/2013-01-16-fixing-gadts.html}
+\bibitem{promotion} Yorgey, \emph{Giving Haskell a Promotion}, \newline \url{http://research.microsoft.com/en-us/um/people/simonpj/papers/ext-f/coercible.pdf}
+\bibitem{kiselyov04} Kiselyov, L{\"a}mmel and Schupke, \emph{Strongly Typed Heterogeneous Collections}, \newline \url{http://okmij.org/ftp/Haskell/HList-ext.pdf}
+\bibitem{lind13} Lindley and McBride, \emph{Hasochism}, \newline \url{https://personal.cis.strath.ac.uk/conor.mcbride/pub/hasochism.pdf}
+\bibitem{norell08} Norell and Chapman, \emph{Dependently Typed Programming in Agda}, \newline \url{http://www.cse.chalmers.se/~ulfn/darcs/AFP08/LectureNotes/AgdaIntro.pdf}
+\bibitem{idris14} The Idris Community, \emph{Programming in Idris: A Tutorial}, \newline \url{http://eb.host.cs.st-andrews.ac.uk/writings/idris-tutorial.pdf}
 \end{thebibliography}
 \end{document}
